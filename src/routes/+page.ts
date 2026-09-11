@@ -5,7 +5,7 @@ export type PlayerID = string;
 
 export type Rule = {
 	rule: string; // define more
-	args?: unknown;
+	args?: Record<string, unknown>;
 	children?: Array<Rule>;
 	child?: Rule;
 };
