@@ -7,6 +7,7 @@
     "npm:@sveltejs/vite-plugin-svelte@^7.1.2": "7.3.0_svelte@5.57.0_vite@8.3.0_@types+node@26.5.1",
     "npm:@tailwindcss/vite@^4.3.0": "4.3.3_vite@8.3.0_@types+node@26.5.1",
     "npm:@types/node@26": "26.5.1",
+    "npm:archipelago.js@^2.1.0": "2.1.0",
     "npm:eslint-config-prettier@^10.1.8": "10.1.8_eslint@10.10.0",
     "npm:eslint-plugin-svelte@^3.19.0": "3.23.0_eslint@10.10.0_svelte@5.57.0",
     "npm:eslint@^10.4.1": "10.10.0",
@@ -718,6 +719,9 @@
         "json-schema-traverse",
         "uri-js"
       ]
+    },
+    "archipelago.js@2.1.0": {
+      "integrity": "sha512-9Zq/lyhSHgUfzHNAm5NyBk1Kl10hf55/jQ1Navz6Z/Wz49bd4MRzbS8CcWDnQd7IoBH8s1p4cVn69iyHaljQKA=="
     },
     "aria-query@5.3.1": {
       "integrity": "sha512-Z/ZeOgVl7bcSYZ/u/rh0fOpvEpq//LZmdbkXyc7syVzjPAhfOa9ebsdTSjEBDU4vs5nC98Kfduj1uFo0qyET3g=="
@@ -1667,6 +1671,7 @@
         "npm:@sveltejs/vite-plugin-svelte@^7.1.2",
         "npm:@tailwindcss/vite@^4.3.0",
         "npm:@types/node@26",
+        "npm:archipelago.js@^2.1.0",
         "npm:eslint-config-prettier@^10.1.8",
         "npm:eslint-plugin-svelte@^3.19.0",
         "npm:eslint@^10.4.1",

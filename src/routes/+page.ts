@@ -5,7 +5,8 @@ export type PlayerID = string;
 
 export type Rule = {
 	rule: string; // define more
-	args?: Record<string, unknown>;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	args?: Record<string, any>;
 	children?: Array<Rule>;
 	child?: Rule;
 };
