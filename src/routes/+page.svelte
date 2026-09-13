@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Client, Item } from 'archipelago.js';
-	import type { ItemName, LocationName, PlayerID, PlayerStorage, Rule } from './+page.js';
+	import type {
+		ItemName,
+		LocationName,
+		PlayerID,
+		PlayerStorage,
+		RegionName,
+		Rule
+	} from './+page.js';
 
 	let { data } = $props();
 
@@ -40,7 +47,9 @@
 				itemsReceived[justinclient.players.self.slot] = justinclient.items.received.map(
 					(x) => x.name
 				);
-				console.log(dependency_walk(data.rules, 'WizardMonkey-TopPath', '2', {}));
+				console.log(
+					'BananaFarm-TUnlock\n' + dependency_walk(data.rules, 'BananaFarm-TUnlock', '2')
+				);
 
 				justinclient.socket.disconnect();
 				avenclient.socket.disconnect();
@@ -54,30 +63,43 @@
 
 	function rule_walk(
 		player_data: Record<PlayerID, PlayerStorage>,
-		location_name: LocationName,
 		rule: Rule,
 		player_id: PlayerID,
 		recursive_checker: Record<string, boolean>,
 		indent = 0
 	): [string, boolean] {
 		let end = '';
-		// console.log(`BIG DBG / rule: ${rule.rule}, location: ${location_name}, player: ${player_id}`);
 
-		const antirecurse = `${location_name}[${player_id}] - ${JSON.stringify(rule)}`;
+		const antirecurse = `RULE - [${player_id}] - ${JSON.stringify(rule)}`;
 		if (recursive_checker[antirecurse] !== undefined) {
-			return [format(indent + 1, '... MEMO'), recursive_checker[antirecurse]];
+			return [format(indent + 1, '... MEMO RULE'), recursive_checker[antirecurse]];
+		}
+
+		let region_end = '';
+		let memo = true;
+
+		if (rule.parent_region !== undefined) {
+			const [e, done] = region_walk(
+				player_data,
+				rule.parent_region,
+				player_id,
+				recursive_checker,
+				indent
+			);
+			if (!done) {
+				region_end += e;
+			}
+			memo = done;
 		}
 
 		if (rule.rule === 'True_') {
-			end += format(indent + 1, `True`);
-			recursive_checker[antirecurse] = false;
-			return [end, false];
+			return [region_end, memo];
 		} else if (rule.rule === 'Has') {
 			const needed_item = rule.args!['item_name'] as string;
-			// if (itemsReceived[player_id].includes(needed_item)) {
-			// 	recursive_checker[antirecurse] = true;
-			// 	return [end, true];
-			// }
+			if (itemsReceived[player_id].includes(needed_item)) {
+				recursive_checker[antirecurse] = true;
+				return [region_end, true];
+			}
 			const item_req = dependency_walk(
 				player_data,
 				needed_item,
@@ -88,63 +110,108 @@
 			end += format(indent + 1, `Has`);
 			end += item_req;
 			recursive_checker[antirecurse] = false;
-			return [end, false];
+			return [end + region_end, false];
 		} else if (rule.rule === 'And' || rule.rule === 'Or') {
 			const rules = rule.children!.map((x) =>
-				rule_walk(player_data, location_name, x, player_id, recursive_checker, indent + 1)
+				rule_walk(player_data, x, player_id, recursive_checker, indent + 1)
 			);
-			// if (
-			// 	(rule.rule === 'And' && rules.every((x) => x[1])) ||
-			// 	(rule.rule === 'Or' && rules.some((x) => x[1]))
-			// ) {
-			// 	recursive_checker[antirecurse] = true;
-			// 	return ['', true];
-			// }
+
+			if (
+				(rule.rule === 'And' && rules.every((x) => x[1])) ||
+				(rule.rule === 'Or' && rules.some((x) => x[1]))
+			) {
+				recursive_checker[antirecurse] = memo;
+				return [region_end, memo];
+			}
 			end += format(indent + 1, rule.rule);
 			for (const child of rules!) {
 				end += child[0];
 			}
 			recursive_checker[antirecurse] = false;
-			return [end, false];
+			return [end + region_end, false];
 		} else if (rule.rule === 'HasFromList' || rule.rule === 'HasFromListUnique') {
 			const valid =
-				rule.args!['item_names'].filter((x) => itemsReceived[player_id].includes(x)).length >=
-				rule.args!['count'];
+				rule.args!['item_names'].filter((x: string) => itemsReceived[player_id].includes(x))
+					.length >= rule.args!['count'];
 			if (valid) {
-				recursive_checker[antirecurse] = true;
-				return ['', true];
+				recursive_checker[antirecurse] = memo;
+				return [region_end, memo];
 			}
 			end += format(indent + 1, `HasFromList >= ${rule.args!['count']}`);
 			for (const child of rule.args!['item_names']) {
 				end += dependency_walk(player_data, child, player_id, recursive_checker, indent + 2);
 			}
 			recursive_checker[antirecurse] = false;
-			return [end, false];
+			return [end + region_end, false];
 		} else if (rule.rule === 'HasAll') {
-			const valid = rule.args!['item_names'].every((x) => itemsReceived[player_id].includes(x));
+			const valid = rule.args!['item_names'].every((x: string) =>
+				itemsReceived[player_id].includes(x)
+			);
 			if (valid) {
-				recursive_checker[antirecurse] = true;
-				return ['', true];
+				recursive_checker[antirecurse] = memo;
+				return [region_end, memo];
 			}
 			end += format(indent + 1, `HasAll`);
 			for (const child of rule.args!['item_names']) {
 				end += dependency_walk(player_data, child, player_id, recursive_checker, indent + 2);
 			}
 			recursive_checker[antirecurse] = false;
-			return ['', false];
+			return [end + region_end, false];
 		}
 
 		return [format(indent + 1, 'ERR ' + rule.rule), false];
 	}
-	/**
-	 * Has(And)
-	 */
+
+	function region_walk(
+		player_data: Record<PlayerID, PlayerStorage>,
+		region_name: RegionName,
+		player_id: PlayerID,
+		recursive_checker: Record<string, boolean>,
+		indent = 0
+	): [string, boolean] {
+		if (!player_data[player_id].regions[region_name]) {
+			return ['', true];
+		}
+
+		const antirecurse = `REGION - ${region_name}[${player_id}]`;
+		if (recursive_checker[antirecurse] !== undefined) {
+			if (!recursive_checker[antirecurse]) return ['', false];
+			return [format(indent + 1, '... MEMO REGION - ' + region_name), true];
+		}
+
+		const region = player_data[player_id].regions[region_name];
+
+		let end = '';
+		if (region.entrances.length <= 0) {
+			recursive_checker[antirecurse] = true;
+			return ['', true];
+		}
+		for (const entrance of region.entrances) {
+			const [form, done] = rule_walk(
+				player_data,
+				entrance,
+				player_id,
+				recursive_checker,
+				indent + 1
+			);
+			end += format(indent + 1, `CAN ENTER ${region_name}`);
+			end += form;
+
+			if (done) {
+				recursive_checker[antirecurse] = true;
+				return ['', true];
+			}
+		}
+
+		recursive_checker[antirecurse] = false;
+		return [end, false];
+	}
 
 	function dependency_walk(
 		player_data: Record<PlayerID, PlayerStorage>,
 		item_name: ItemName,
 		player_id: PlayerID,
-		recursive_checker: Record<string, boolean>,
+		recursive_checker: Record<string, boolean> = {},
 		indent = 0
 	): string {
 		// player likely picked this up from the start and the item got culled
@@ -157,14 +224,7 @@
 		const location = player_data[location_info.player].locations[location_info.name];
 
 		let end = format(indent, `${location_info.name}[${location_info.player}]`);
-		end += rule_walk(
-			player_data,
-			location_info.name,
-			location,
-			location_info.player,
-			recursive_checker,
-			indent
-		)[0];
+		end += rule_walk(player_data, location, location_info.player, recursive_checker, indent)[0];
 
 		return end;
 	}

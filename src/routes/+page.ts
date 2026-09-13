@@ -9,11 +9,12 @@ export type Rule = {
 	args?: Record<string, any>;
 	children?: Array<Rule>;
 	child?: Rule;
+	parent_region?: RegionName;
 };
 
 export type PlayerStorage = {
 	locations: Record<LocationName, Rule>;
-	regions: Record<RegionName, Rule>;
+	regions: Record<RegionName, { entrances: Rule[] }>;
 	items: Record<ItemName, ItemData>;
 };
 export type LocationName = string;
